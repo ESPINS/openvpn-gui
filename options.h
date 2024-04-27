@@ -51,6 +51,22 @@ typedef enum {
 } service_state_t;
 
 typedef enum {
+    otp_time30,
+    otp_time60
+} otp_time_t;
+
+typedef enum {
+    otp_digit6,
+    otp_digit8
+} otp_digit_t;
+
+typedef enum {
+    otp_sha1,
+    otp_sha256,
+    otp_sha512
+} otp_hash_mode_t;
+
+typedef enum {
     config,
     windows,
     manual
@@ -87,6 +103,7 @@ typedef struct {
 #define FLAG_SAVE_AUTH_PASS (1<<5)
 #define FLAG_DISABLE_SAVE_PASS (1<<6)
 #define FLAG_DISABLE_ECHO_MSG  (1<<7)
+#define FLAG_ENABLE_AUTO_OTP   (1<<10)
 
 #define CONFIG_VIEW_AUTO      (0)
 #define CONFIG_VIEW_FLAT      (1)
@@ -174,6 +191,12 @@ typedef struct {
     int max_groups;                   /* Current capacity of groups array */
 
     service_state_t service_state;    /* State of the OpenVPN Service */
+
+    /* AutoOTP Settings */
+    otp_time_t otp_time;
+    otp_digit_t otp_digit;
+    otp_hash_mode_t otp_hash_mode;
+    unsigned char otp_enc_key[4096];
 
     /* Proxy Settings */
     proxy_source_t proxy_source;      /* Where to get proxy information from */

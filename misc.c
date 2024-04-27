@@ -40,6 +40,7 @@
 #include "openvpn_config.h"
 #include "openvpn-gui-res.h"
 #include "tray.h"
+#include "auto_otp.h"
 
 /*
  * Helper function to do base64 conversion through CryptoAPI
@@ -211,7 +212,59 @@ out:
     return retval;
 }
 
+BOOL
+ManagementCommandFromInputWithAutoOtp(connection_t *c, LPCSTR fmt, HWND hDlg, int id, int otp_pass_id)
+{
+    BOOL retval = FALSE;
+    LPSTR input, cmd;
+    int input_len, cmd_len, pos;
 
+    TCHAR password_w[30 + 1];
+    unsigned char password[AES_KEY_LENGTH];
+    unsigned char otp_number[10];
+
+    GetDlgItemTextUtf8(hDlg, id, &input, &input_len);
+
+    /* Escape input if needed */
+    for (pos = 0; pos < input_len; ++pos)
+    {
+        if (input[pos] == '\\' || input[pos] == '"')
+        {
+            LPSTR buf = realloc(input, ++input_len + 1);
+            if (buf == NULL)
+                goto out;
+
+            input = buf;
+            memmove(input + pos + 1, input + pos, input_len - pos + 1);
+            input[pos] = '\\';
+            pos += 1;
+        }
+    }
+
+    GetDlgItemText(hDlg, otp_pass_id, password_w, _countof(password_w));
+    WideCharToMultiByte(CP_UTF8, 0, password_w, -1, (char *)password, AES_KEY_LENGTH, NULL, NULL);
+    GenerateAutoOTPNumber(password, otp_number);
+
+    cmd_len = input_len + strlen(fmt) + strlen((char *)otp_number);
+    cmd = malloc(cmd_len);
+    if (cmd)
+    {
+        snprintf(cmd, cmd_len, fmt, input, otp_number);
+        retval = ManagementCommand(c, cmd, NULL, regular);
+        free(cmd);
+    }
+
+out:
+    /* Clear buffers with potentially secret content */
+    if (input_len)
+    {
+        memset(input, 'x', input_len);
+        SetDlgItemTextA(hDlg, id, input);
+        free(input);
+    }
+
+    return retval;
+}
 
 /*
  * Generate a management command from double user inputs and send it

@@ -14,6 +14,7 @@
 #define AUTH_PASS_DATA    L"auth-data"
 #define ENTROPY_DATA      L"entropy"
 #define AUTH_USER_DATA    L"username"
+#define AUTO_OTP_PASS_DATA     L"auto-otp-data"
 #define ENTROPY_LEN 16
 
 static DWORD
@@ -135,6 +136,12 @@ SaveAuthPass(const WCHAR *config_name, const WCHAR *password)
     return save_encrypted(config_name, password, AUTH_PASS_DATA);
 }
 
+int
+SaveAutoOtpPass(const WCHAR *config_name, const WCHAR *password)
+{
+    return save_encrypted(config_name, password, AUTO_OTP_PASS_DATA);
+}
+
 /*
  * Returns 1 on success, 0 on failure. password should have space
  * for up to capacity wide chars incluing nul termination
@@ -198,6 +205,12 @@ RecallAuthPass(const WCHAR *config_name, WCHAR *password)
 }
 
 int
+RecallAutoOtpPass(const WCHAR *config_name, WCHAR *password)
+{
+    return recall_encrypted(config_name, password, AUTO_OTP_PASS_LEN, AUTO_OTP_PASS_DATA);
+}
+
+int
 SaveUsername(const WCHAR *config_name, const WCHAR *username)
 {
     DWORD len = (wcslen(username) + 1) * sizeof(*username);
@@ -233,12 +246,19 @@ DeleteSavedAuthPass(const WCHAR *config_name)
     DeleteConfigRegistryValue(config_name, AUTH_PASS_DATA);
 }
 
+void
+DeleteSavedAutoOtpPass(const WCHAR *config_name)
+{
+    DeleteConfigRegistryValue(config_name, AUTO_OTP_PASS_DATA);
+}
+
 /* delete saved config-specific auth password and private key passphrase */
 void
 DeleteSavedPasswords(const WCHAR *config_name)
 {
     DeleteConfigRegistryValue(config_name, KEY_PASS_DATA);
     DeleteConfigRegistryValue(config_name, AUTH_PASS_DATA);
+    DeleteConfigRegistryValue(config_name, AUTO_OTP_PASS_DATA);
     DeleteConfigRegistryValue(config_name, ENTROPY_DATA);
 }
 
@@ -260,4 +280,13 @@ IsKeyPassSaved(const WCHAR *config_name)
     len = GetConfigRegistryValue(config_name, KEY_PASS_DATA, NULL, 0);
     PrintDebug(L"checking key-pass-data in registry returned len = %d", len);
     return (len > 0);
+}
+
+BOOL
+IsAutoOtpPassSaved(const WCHAR *config_name)
+{
+    DWORD len = 0;
+    len = GetConfigRegistryValue(config_name, AUTO_OTP_PASS_DATA, NULL, 0);
+    PrintDebug(L"checking auto-otp-data in registry returned len = %d", len);
+    return (len > 0); 
 }

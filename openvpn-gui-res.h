@@ -150,6 +150,34 @@
 #define ID_CHK_AUTOLOGIN                 402
 #define IDS_ERR_URL_IMPORT_PROFILE       403
 
+/* AutoOTP Dialog */
+#define ID_DLG_AUTO_OTP                  500
+#define ID_KEY_GROUPBOX                  501
+#define ID_TIME_GROUPBOX                 502
+#define ID_DIGIT_GROUPBOX                503
+#define ID_HASH_GROUPBOX                 504
+#define ID_OTP_GEN_GROUPBOX              505
+#define ID_TXT_OTP_KEY                   506
+#define ID_TXT_CREATE_PASSWORD           507
+#define ID_TXT_CONFIRM_PASSWORD          508
+#define ID_TXT_GEN_KEY                   509
+#define ID_EDT_OTP_KEY                   510
+#define ID_EDT_CREATE_PASSWORD           511
+#define ID_EDT_CONFIRM_PASSWORD          512
+#define ID_BTN_GEN_KEY                   513
+#define ID_BTN_KEY_LOAD                  514
+#define ID_BTN_GEN_NUMBER                515
+#define ID_RB_OTP_30SEC                  516
+#define ID_RB_OTP_60SEC                  517
+#define ID_RB_OTP_6DIGIT                 518
+#define ID_RB_OTP_8DIGIT                 519
+#define ID_RB_OTP_SHA1                   520
+#define ID_RB_OTP_SHA256                 521
+#define ID_RB_OTP_SHA512                 522
+#define ID_CHK_AUTO_OTP                  523
+#define ID_LTEXT_OTP_PASS                524
+#define ID_EDT_OTP_PASS                  525
+
 /*
  * String Table Resources
  */

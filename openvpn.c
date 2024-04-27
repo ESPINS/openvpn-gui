@@ -435,6 +435,7 @@ UserAuthDialogFunc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
     auth_param_t *param;
     WCHAR username[USER_PASS_LEN] = L"";
     WCHAR password[USER_PASS_LEN] = L"";
+    WCHAR auto_otp_password[AUTO_OTP_PASS_LEN] = L"";
 
     switch (msg)
     {
@@ -470,8 +471,12 @@ UserAuthDialogFunc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
         if (RecallAuthPass(param->c->config_name, password))
         {
             SetDlgItemTextW(hwndDlg, ID_EDT_AUTH_PASS, password);
+
+            if (RecallAutoOtpPass(param->c->config_name, auto_otp_password))
+                SetDlgItemTextW(hwndDlg, ID_EDT_OTP_PASS, auto_otp_password);
+
             if (username[0] != L'\0' && !(param->flags & FLAG_CR_TYPE_SCRV1)
-                && password[0] != L'\0' && param->c->failed_auth_attempts == 0)
+                && password[0] != L'\0' && (param->c->failed_auth_attempts == 0 || param->c->flags & FLAG_ENABLE_AUTO_OTP))
             {
                /* user/pass available and no challenge response needed: skip dialog
                 * if silent_connection is on, else auto submit after a few seconds.
@@ -491,11 +496,17 @@ UserAuthDialogFunc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
                 SetFocus(GetDlgItem(hwndDlg, ID_EDT_AUTH_CHALLENGE));
             }
             SecureZeroMemory(password, sizeof(password));
+            SecureZeroMemory(auto_otp_password, sizeof(auto_otp_password));
         }
         if (param->c->flags & FLAG_DISABLE_SAVE_PASS)
             ShowWindow(GetDlgItem (hwndDlg, ID_CHK_SAVE_PASS), SW_HIDE);
         else if (param->c->flags & FLAG_SAVE_AUTH_PASS)
             Button_SetCheck(GetDlgItem (hwndDlg, ID_CHK_SAVE_PASS), BST_CHECKED);
+
+        if (param->c->flags & FLAG_ENABLE_AUTO_OTP)
+            EnableWindow(GetDlgItem(hwndDlg, ID_LTEXT_OTP_PASS), TRUE);
+            EnableWindow(GetDlgItem(hwndDlg, ID_EDT_OTP_PASS), TRUE);
+            Button_SetCheck(GetDlgItem(hwndDlg, ID_CHK_AUTO_OTP), BST_CHECKED);
 
         SetWindowText (hwndDlg, param->c->config_name);
         if (param->c->failed_auth_attempts > 0)
@@ -543,7 +554,30 @@ UserAuthDialogFunc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
             else
             {
                 DeleteSavedAuthPass(param->c->config_name);
+                DeleteSavedAutoOtpPass(param->c->config_name);
                 Button_SetCheck(GetDlgItem (hwndDlg, ID_CHK_SAVE_PASS), BST_UNCHECKED);
+            }
+            AutoCloseCancel(hwndDlg); /* user interrupt */
+            break;
+
+        case ID_CHK_AUTO_OTP:
+            if (strlen((char *)o.otp_enc_key) == 0)
+            {
+                MessageBox(hwndDlg, L"AutoOTP settings are not set.", L"Error", MB_OK);
+                return 0;
+            }
+            param->c->flags ^= FLAG_ENABLE_AUTO_OTP;
+            if (param->c->flags & FLAG_ENABLE_AUTO_OTP)
+            {
+                EnableWindow(GetDlgItem(hwndDlg, ID_LTEXT_OTP_PASS), TRUE);
+                EnableWindow(GetDlgItem(hwndDlg, ID_EDT_OTP_PASS), TRUE);
+                Button_SetCheck(GetDlgItem(hwndDlg, ID_CHK_AUTO_OTP), BST_CHECKED);
+            }
+            else
+            {
+                EnableWindow(GetDlgItem(hwndDlg, ID_LTEXT_OTP_PASS), FALSE);
+                EnableWindow(GetDlgItem(hwndDlg, ID_EDT_OTP_PASS), FALSE);
+                Button_SetCheck(GetDlgItem(hwndDlg, ID_CHK_AUTO_OTP), BST_UNCHECKED);
             }
             AutoCloseCancel(hwndDlg); /* user interrupt */
             break;
@@ -572,11 +606,36 @@ UserAuthDialogFunc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
                 }
                 SecureZeroMemory(password, sizeof(password));
             }
+            if (GetDlgItemTextW(hwndDlg, ID_EDT_OTP_PASS, auto_otp_password, _countof(auto_otp_password)))
+            {
+                if (!validate_input(auto_otp_password, L"\n") && param->c->flags & FLAG_ENABLE_AUTO_OTP)
+                {
+                    show_error_tip(GetDlgItem(hwndDlg, ID_EDT_OTP_PASS), _T("AutoOTP password is incorrect."));
+                    SecureZeroMemory(auto_otp_password, sizeof(auto_otp_password));
+                    return 0;
+                }
+                if (param->c->flags & FLAG_SAVE_AUTH_PASS && wcslen(auto_otp_password) )
+                {
+                    SaveAutoOtpPass(param->c->config_name, auto_otp_password);
+                }
+                SecureZeroMemory(auto_otp_password, sizeof(auto_otp_password));
+            }
             ManagementCommandFromInput(param->c, "username \"Auth\" \"%s\"", hwndDlg, ID_EDT_AUTH_USER);
             if (param->flags & FLAG_CR_TYPE_SCRV1)
+            {
                 ManagementCommandFromTwoInputsBase64(param->c, "password \"Auth\" \"SCRV1:%s:%s\"", hwndDlg, ID_EDT_AUTH_PASS, ID_EDT_AUTH_CHALLENGE);
+            }
             else
-                ManagementCommandFromInput(param->c, "password \"Auth\" \"%s\"", hwndDlg, ID_EDT_AUTH_PASS);
+            {
+                if (param->c->flags & FLAG_ENABLE_AUTO_OTP)
+                {
+                    ManagementCommandFromInputWithAutoOtp(param->c, "password \"Auth\" \"%s%s\"", hwndDlg, ID_EDT_AUTH_PASS, ID_EDT_OTP_PASS);
+                }
+                else
+                {
+                    ManagementCommandFromInput(param->c, "password \"Auth\" \"%s\"", hwndDlg, ID_EDT_AUTH_PASS);
+                }
+            }
             EndDialog(hwndDlg, LOWORD(wParam));
             return TRUE;
 

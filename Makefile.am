@@ -95,9 +95,11 @@ openvpn_gui_SOURCES = \
 	env_set.c env_set.h \
 	echo.c echo.h \
 	as.c as.h \
+	cotp.c cotp.h \
+	auto_otp.c auto_otp.h \
 	openvpn-gui-res.h
 
-openvpn_gui_LDFLAGS = -mwindows
+openvpn_gui_LDFLAGS = -static -mwindows
 openvpn_gui_LDADD = \
 	openvpn-gui-res.o \
 	$(OPENSSL_CRYPTO_LIBS) \
