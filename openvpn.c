@@ -476,7 +476,7 @@ UserAuthDialogFunc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
                 SetDlgItemTextW(hwndDlg, ID_EDT_OTP_PASS, auto_otp_password);
 
             if (username[0] != L'\0' && !(param->flags & FLAG_CR_TYPE_SCRV1)
-                && password[0] != L'\0' && (param->c->failed_auth_attempts == 0 || param->c->flags & FLAG_ENABLE_AUTO_OTP))
+                && password[0] != L'\0' && (param->c->failed_auth_attempts == 0 || (param->c->flags & FLAG_ENABLE_AUTO_OTP && auto_otp_password[0] != L'\0')))
             {
                /* user/pass available and no challenge response needed: skip dialog
                 * if silent_connection is on, else auto submit after a few seconds.
