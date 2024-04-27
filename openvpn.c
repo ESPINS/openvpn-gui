@@ -504,9 +504,11 @@ UserAuthDialogFunc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
             Button_SetCheck(GetDlgItem (hwndDlg, ID_CHK_SAVE_PASS), BST_CHECKED);
 
         if (param->c->flags & FLAG_ENABLE_AUTO_OTP)
+        {
             EnableWindow(GetDlgItem(hwndDlg, ID_LTEXT_OTP_PASS), TRUE);
             EnableWindow(GetDlgItem(hwndDlg, ID_EDT_OTP_PASS), TRUE);
             Button_SetCheck(GetDlgItem(hwndDlg, ID_CHK_AUTO_OTP), BST_CHECKED);
+        }
 
         SetWindowText (hwndDlg, param->c->config_name);
         if (param->c->failed_auth_attempts > 0)
