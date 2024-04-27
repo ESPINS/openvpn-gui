@@ -4,6 +4,9 @@
 
 #include <windows.h>
 #include <windowsx.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <time.h>
 #include <prsht.h>
 #include <tchar.h>
 #include <winhttp.h>
@@ -89,7 +92,82 @@ int hmac_algo_sha512(const char *byte_secret, int byte_secret_len, const char *b
     return result == 0 ? 0 : len;
 }
 
-uint64_t get_current_time()
+LSTATUS get_current_ntp_time(uint64_t *milliseconds)
+{
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        return ERROR_AUTO_OTP;
+    }
+
+    struct addrinfo hints, *result = NULL;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+
+    int ret = getaddrinfo(NTP_SERVER, NTP_PORT, &hints, &result);
+    if (ret != 0) {
+        WSACleanup();
+        return ERROR_AUTO_OTP;
+    }
+
+    SOCKET sock = INVALID_SOCKET;
+    struct addrinfo *ptr = NULL;
+    for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
+        sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+        if (sock == INVALID_SOCKET) {
+            WSACleanup();
+            return ERROR_AUTO_OTP;
+        }
+        break;
+    }
+
+    if (sock == INVALID_SOCKET) {
+        WSACleanup();
+        return ERROR_AUTO_OTP;
+    }
+
+    struct timeval timeout;
+    timeout.tv_sec = NTP_TIMEOUT_SEC;
+    timeout.tv_usec = 0;
+
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
+        closesocket(sock);
+        WSACleanup();
+        return ERROR_AUTO_OTP;
+    }
+
+    if (setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
+        closesocket(sock);
+        WSACleanup();
+        return ERROR_AUTO_OTP;
+    }
+
+    ntp_packet packet;
+    memset(&packet, 0, sizeof(ntp_packet));
+    packet.li_vn_mode = 0x1B; // NTP request
+
+    if (sendto(sock, (char*)&packet, sizeof(ntp_packet), 0, ptr->ai_addr, ptr->ai_addrlen) == SOCKET_ERROR) {
+        closesocket(sock);
+        WSACleanup();
+        return ERROR_AUTO_OTP;
+    }
+
+    if (recv(sock, (char*)&packet, sizeof(ntp_packet), 0) == SOCKET_ERROR) {
+        closesocket(sock);
+        WSACleanup();
+        return ERROR_AUTO_OTP;
+    }
+
+    closesocket(sock);
+    WSACleanup();
+
+    *milliseconds = ntohl(packet.txTm_s) - NTP_TIMESTAMP_DELTA;
+
+    return ERROR_SUCCESS;
+}
+
+uint64_t get_current_local_time()
 {
     uint64_t milliseconds = 0;
 
@@ -103,6 +181,21 @@ uint64_t get_current_time()
     milliseconds = (largeInteger.QuadPart - 116444736000000000ULL) / 10000000ULL;
 
     return milliseconds;
+}
+
+uint64_t get_current_time()
+{
+    uint64_t milliseconds = 0;
+    LSTATUS status = get_current_ntp_time(&milliseconds);
+
+    if (status == ERROR_SUCCESS)
+    {
+        return milliseconds;
+    }
+    else
+    {
+        return get_current_local_time();
+    }
 }
 
 int max_base64_encode_length(int length)
