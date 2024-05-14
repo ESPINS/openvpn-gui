@@ -135,32 +135,31 @@ COTPRESULT otp_byte_secret(OTPData* data, char* out_str)
 	
 	if (output_length == 0)
 		return OTP_OK;
-
+	
 	for (size_t i = 0; i < num_blocks; i++)
 	{
 		unsigned int block_values[8] = { 0 };
-
+		
 		for (int j = 0; j < 8; j++)
 		{
 			char c = data->base32_secret[i * 8 + j];
+			if (c == '=')
+				break;
+				
 			int found = 0;
-
-			if (c != '=')
+			for (int k = 0; k < 32; k++)
 			{
-				for (int k = 0; k < 32; k++)
+				if (c == OTP_DEFAULT_BASE32_CHARS[k])
 				{
-					if (c == OTP_DEFAULT_BASE32_CHARS[k])
-					{
-						block_values[j] = k;
-						found = 1;
-						break;
-					}
+					block_values[j] = k;
+					found = 1;
+					break;
 				}
-
-				if (!found)
-				{
-					return OTP_ERROR;
-				}
+			}
+			
+			if (!found)
+			{
+				return OTP_ERROR;
 			}
 		}
 		

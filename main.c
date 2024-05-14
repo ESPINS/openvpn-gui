@@ -176,6 +176,9 @@ int WINAPI _tWinMain (HINSTANCE hThisInstance,
       first_instance = FALSE;
   }
 
+  // AllocConsole();
+  // freopen("CONOUT$", "w", stdout);
+
   /* Initialize handlers for manangement interface notifications */
   mgmt_rtmsg_handler handler[] = {
       { ready_,    OnReady },
